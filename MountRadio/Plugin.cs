@@ -100,12 +100,11 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     {
         if (flag == ConditionFlag.Mounted && value)
         {
-            // Player is mounting as the driver
-            PlayRadio();
-
-            // Update configuration to store driver’s stream URL for passenger access
-            Configuration.RadioUrl = Configuration.RadioUrl; // Driver sets URL
-            Configuration.Save();
+            // Player is mounting as the driver, only start playback if not already playing
+            if (radioPlayer.PlaybackState != PlaybackState.Playing)
+            {
+                PlayRadio();
+            }
         }
         else if (flag == ConditionFlag.Mounted && !value)
         {
@@ -113,8 +112,11 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         }
         else if (flag == ConditionFlag.Mounted2 && value)
         {
-            // Player is mounting as a passenger
-            PlayPassengerRadio(Configuration.RadioUrl);
+            // Player is mounting as a passenger, only start playback if not already playing
+            if (radioPlayer.PlaybackState != PlaybackState.Playing)
+            {
+                PlayPassengerRadio(Configuration.RadioUrl);
+            }
         }
         else if (flag == ConditionFlag.Mounted2 && !value)
         {
@@ -147,15 +149,19 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     {
         try
         {
-            if (radioPlayer == null)
+            // Check if the radio is already playing
+            if (radioPlayer.PlaybackState == PlaybackState.Playing)
             {
-                Chat.Print("Radio player is not initialized.");
+                // Radio is already playing, so do nothing
                 return;
             }
 
+            // Initialize and play the radio stream
             streamReader = new MediaFoundationReader(Configuration.RadioUrl);
             radioPlayer.Init(streamReader);
             radioPlayer.Play();
+
+            //Chat.Print($"Now playing: {Configuration.RadioUrl}");
         }
         catch (Exception ex)
         {
