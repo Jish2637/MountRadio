@@ -60,6 +60,11 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             HelpMessage = "Set the volume for the Radio Mount Plugin. Usage: /radiovolume <0-100>"
         });
 
+        CommandManager.AddHandler("/radiotoggle", new CommandInfo(ToggleRadioCommand)
+        {
+            HelpMessage = "Toggle radio playback anytime."
+        });
+
         // Register UI callbacks
         PluginInterface.UiBuilder.Draw += DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
@@ -178,13 +183,28 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             Chat.Print($"Error stopping radio: {ex.Message}");
         }
     }
+    private void ToggleRadioCommand(string command, string args)
+    {
 
+        // Toggle playback based on current state
+        if (radioPlayer.PlaybackState == PlaybackState.Playing)
+        {
+            StopRadio();
+            Chat.Print("Radio playback stopped.");
+        }
+        else
+        {
+            PlayRadio();
+            Chat.Print("Radio playback started.");
+        }
+    }
 
     public void Dispose()
     {
         windowSystem.RemoveAllWindows();
         CommandManager.RemoveHandler(CommandName);
         CommandManager.RemoveHandler("/radiovolume");
+        CommandManager.RemoveHandler("/radiotoggle");
         Condition.ConditionChange -= OnConditionChange;
         PluginInterface.UiBuilder.Draw -= DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
