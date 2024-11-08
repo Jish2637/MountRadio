@@ -160,13 +160,16 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             streamReader = new MediaFoundationReader(Configuration.RadioUrl);
             radioPlayer.Init(streamReader);
             radioPlayer.Play();
-
-            //Chat.Print($"Now playing: {Configuration.RadioUrl}");
+        }
+        catch (Exception ex) when ((uint)ex.HResult == 0xC00D0035)
+        {
+            Chat.PrintError("Error playing radio: The URL appears to be invalid. Please check the radio link in the configuration.");
+            StopRadio(); // Clean up in case of an error
         }
         catch (Exception ex)
         {
-            Chat.Print($"Error playing radio: {ex.Message}");
-            StopRadio(); // Clean up in case of an error
+            Chat.PrintError($"Error playing radio, invalid link: {ex.Message}");
+            StopRadio(); // Clean up in case of a generic error
         }
     }
 
