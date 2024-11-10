@@ -71,6 +71,11 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             HelpMessage = "Toggle whether the radio stops automatically when you dismount."
         });
 
+        CommandManager.AddHandler("/radioautostart", new CommandInfo(ToggleAutoStartCommand)
+        {
+            HelpMessage = "Toggle whether the radio starts automatically when you mount."
+        });
+
         // Register UI callbacks
         PluginInterface.UiBuilder.Draw += DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
@@ -89,6 +94,16 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         // Inform the user of the new state
         string status = Configuration.AutoStopOnDismount ? "enabled" : "disabled";
         Chat.Print($"Auto-stop on dismount is now {status}.");
+    }
+    private void ToggleAutoStartCommand(string command, string args)
+    {
+        // Toggle the AutoStartOnMount setting
+        Configuration.AutoStartOnMount = !Configuration.AutoStartOnMount;
+        Configuration.Save();
+
+        // Inform the user of the new state
+        string status = Configuration.AutoStartOnMount ? "enabled" : "disabled";
+        Chat.Print($"Auto-start on mount is now {status}.");
     }
 
     private void OnVolumeCommand(string command, string args)
@@ -113,11 +128,13 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             Chat.Print("Please provide a valid number between 0 and 100.");
         }
     }
+
     private void OnConditionChange(ConditionFlag flag, bool value)
     {
         if (flag == ConditionFlag.Mounted && value)
         {
-            if (radioPlayer.PlaybackState != PlaybackState.Playing)
+            // Check the auto-start setting before playing
+            if (Configuration.AutoStartOnMount && radioPlayer.PlaybackState != PlaybackState.Playing)
             {
                 PlayRadio();
             }
@@ -128,34 +145,13 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         }
         else if (flag == ConditionFlag.Mounted2 && value)
         {
-            if (radioPlayer.PlaybackState != PlaybackState.Playing)
+            if (Configuration.AutoStartOnMount && radioPlayer.PlaybackState != PlaybackState.Playing)
             {
-                PlayPassengerRadio(Configuration.RadioUrl);
+                PlayRadio();
             }
         }
         else if (flag == ConditionFlag.Mounted2 && !value && Configuration.AutoStopOnDismount)
         {
-            StopRadio();
-        }
-    }
-
-    private void PlayPassengerRadio(string streamUrl)
-    {
-        try
-        {
-            if (radioPlayer == null)
-            {
-                Chat.Print("Radio player is not initialized for passenger.");
-                return;
-            }
-
-            streamReader = new MediaFoundationReader(streamUrl);
-            radioPlayer.Init(streamReader);
-            radioPlayer.Play();
-        }
-        catch (Exception ex)
-        {
-            Chat.Print($"Error playing passenger radio: {ex.Message}");
             StopRadio();
         }
     }
@@ -229,6 +225,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         CommandManager.RemoveHandler("/radiovolume");
         CommandManager.RemoveHandler("/radiotoggle");
         CommandManager.RemoveHandler("/radioautostop");
+        CommandManager.RemoveHandler("/radioautostart");
         Condition.ConditionChange -= OnConditionChange;
         PluginInterface.UiBuilder.Draw -= DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
@@ -270,6 +267,7 @@ public class PluginConfiguration : IPluginConfiguration
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = false;
     public bool IsConfigWindowMovable { get; set; } = true;
     public bool AutoStopOnDismount { get; set; } = true; // New property, default to enabled
+    public bool AutoStartOnMount { get; set; } = true; // New property, default to enabled
 
     [NonSerialized]
     private IDalamudPluginInterface? pluginInterface;

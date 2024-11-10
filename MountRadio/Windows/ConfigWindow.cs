@@ -43,6 +43,15 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Toggle whether music stops automatically when you dismount.");
 
+        // Auto-start toggle
+        bool autoStartOnMount = plugin.Configuration.AutoStartOnMount;
+        if (ImGui.Checkbox("Auto-start music on mount", ref autoStartOnMount))
+        {
+            plugin.Configuration.AutoStartOnMount = autoStartOnMount;
+            plugin.Configuration.Save();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Toggle whether music starts automatically when you mount.");
     }
 
     public void Dispose() => GC.SuppressFinalize(this);
