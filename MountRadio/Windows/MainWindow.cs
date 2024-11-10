@@ -32,11 +32,11 @@ public class MainWindow : Window, IDisposable
 
     public override void Draw()
     {
-        ImGui.Text("Radio Stream for mounts.");
+        ImGui.Text("Radio Stream for mounts or on foot.");
 
-        ImGui.Text("Use a live radio for synced music.");
+        ImGui.Text("Use a live radio for synced music with friends!");
 
-        ImGui.Text("Plays even if you are passenger.");
+        ImGui.Text("Plays even if you are passenger on a mount.");
 
         if (ImGui.Button("Radio Settings"))
         {

@@ -8,7 +8,6 @@ namespace RadioMountPlugin.Windows;
 public class ConfigWindow : Window, IDisposable
 {
     private readonly RadioMountPlugin plugin;
-    private float testVolume = 0.5f; // Declare here to retain value
 
     public ConfigWindow(RadioMountPlugin plugin) : base("Radio Mount Plugin Config")
     {
@@ -31,6 +30,19 @@ public class ConfigWindow : Window, IDisposable
             plugin.Configuration.Save();
             ImGui.Text("Settings saved.");
         }
+
+        bool autoStopOnDismount = plugin.Configuration.AutoStopOnDismount;
+
+        if (ImGui.Checkbox("Auto-stop music on dismount", ref autoStopOnDismount))
+        {
+            // Update the configuration only if the value has changed
+            plugin.Configuration.AutoStopOnDismount = autoStopOnDismount;
+            plugin.Configuration.Save();
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Toggle whether music stops automatically when you dismount.");
+
     }
 
     public void Dispose() => GC.SuppressFinalize(this);

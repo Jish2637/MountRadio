@@ -6,6 +6,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using RadioMountPlugin.Windows;
 using System;
@@ -26,7 +27,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     private const string CommandName = "/radiomount";
 
     public PluginConfiguration Configuration { get; init; }
-    private WaveOutEvent radioPlayer;
+    private WasapiOut radioPlayer;
     private MediaFoundationReader? streamReader = null;
 
     private readonly WindowSystem windowSystem = new("RadioMountPlugin");
@@ -40,7 +41,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         Configuration.Initialize(PluginInterface);
 
         // Initialize radioPlayer with the configured volume
-        radioPlayer = new WaveOutEvent();
+        radioPlayer = new WasapiOut(AudioClientShareMode.Shared, 200);
         radioPlayer.Volume = Configuration.Volume; // Set initial volume from config
 
         // Initialize windows
@@ -65,6 +66,11 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             HelpMessage = "Toggle radio playback anytime."
         });
 
+        CommandManager.AddHandler("/radioautostop", new CommandInfo(ToggleAutoStopCommand)
+        {
+            HelpMessage = "Toggle whether the radio stops automatically when you dismount."
+        });
+
         // Register UI callbacks
         PluginInterface.UiBuilder.Draw += DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
@@ -72,6 +78,17 @@ public sealed class RadioMountPlugin : IDalamudPlugin
 
         // Register condition change handler for mount events
         Condition.ConditionChange += OnConditionChange;
+    }
+
+    private void ToggleAutoStopCommand(string command, string args)
+    {
+        // Toggle the AutoStopOnDismount setting
+        Configuration.AutoStopOnDismount = !Configuration.AutoStopOnDismount;
+        Configuration.Save();
+
+        // Inform the user of the new state
+        string status = Configuration.AutoStopOnDismount ? "enabled" : "disabled";
+        Chat.Print($"Auto-stop on dismount is now {status}.");
     }
 
     private void OnVolumeCommand(string command, string args)
@@ -100,25 +117,23 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     {
         if (flag == ConditionFlag.Mounted && value)
         {
-            // Player is mounting as the driver, only start playback if not already playing
             if (radioPlayer.PlaybackState != PlaybackState.Playing)
             {
                 PlayRadio();
             }
         }
-        else if (flag == ConditionFlag.Mounted && !value)
+        else if (flag == ConditionFlag.Mounted && !value && Configuration.AutoStopOnDismount)
         {
             StopRadio();
         }
         else if (flag == ConditionFlag.Mounted2 && value)
         {
-            // Player is mounting as a passenger, only start playback if not already playing
             if (radioPlayer.PlaybackState != PlaybackState.Playing)
             {
                 PlayPassengerRadio(Configuration.RadioUrl);
             }
         }
-        else if (flag == ConditionFlag.Mounted2 && !value)
+        else if (flag == ConditionFlag.Mounted2 && !value && Configuration.AutoStopOnDismount)
         {
             StopRadio();
         }
@@ -149,14 +164,13 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     {
         try
         {
-            // Check if the radio is already playing
-            if (radioPlayer.PlaybackState == PlaybackState.Playing)
-            {
-                // Radio is already playing, so do nothing
-                return;
-            }
+            // Dispose of any existing instances
+            StopRadio();
 
-            // Initialize and play the radio stream
+            // Reinitialize radioPlayer and streamReader
+            radioPlayer = new WasapiOut(AudioClientShareMode.Shared, 200);
+            radioPlayer.Volume = Configuration.Volume;
+
             streamReader = new MediaFoundationReader(Configuration.RadioUrl);
             radioPlayer.Init(streamReader);
             radioPlayer.Play();
@@ -168,7 +182,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         }
         catch (Exception ex)
         {
-            Chat.PrintError($"Error playing radio, invalid link: {ex.Message}");
+            Chat.PrintError($"Error playing radio: {ex.Message}");
             StopRadio(); // Clean up in case of a generic error
         }
     }
@@ -177,13 +191,12 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     {
         try
         {
-            if (radioPlayer == null)
+            if (radioPlayer != null)
             {
-                Chat.Print("Radio player is not initialized.");
-                return;
+                radioPlayer.Stop();
+                radioPlayer.Dispose();
             }
 
-            radioPlayer.Stop();
             streamReader?.Dispose();
             streamReader = null; // Reset streamReader to prevent reuse
         }
@@ -192,6 +205,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             Chat.Print($"Error stopping radio: {ex.Message}");
         }
     }
+
     private void ToggleRadioCommand(string command, string args)
     {
 
@@ -214,6 +228,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
         CommandManager.RemoveHandler("/radiovolume");
         CommandManager.RemoveHandler("/radiotoggle");
+        CommandManager.RemoveHandler("/radioautostop");
         Condition.ConditionChange -= OnConditionChange;
         PluginInterface.UiBuilder.Draw -= DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
@@ -254,6 +269,7 @@ public class PluginConfiguration : IPluginConfiguration
 
     public bool SomePropertyToBeSavedAndWithADefault { get; set; } = false;
     public bool IsConfigWindowMovable { get; set; } = true;
+    public bool AutoStopOnDismount { get; set; } = true; // New property, default to enabled
 
     [NonSerialized]
     private IDalamudPluginInterface? pluginInterface;
