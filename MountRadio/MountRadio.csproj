@@ -9,8 +9,6 @@
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-  
-  <Import Project="$(DalamudLibPath)/targets/Dalamud.Plugin.targets"/>
 	
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
