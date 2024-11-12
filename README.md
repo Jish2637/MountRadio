@@ -5,19 +5,29 @@ Simple plugin for FF XIV that lets you use a URL radio/live music stream wheneve
 
 Audio stops when you dismount & will start/connect again when you mount up again.
 
-Radio can also be toggled off/on at any time, mounted or on foot
+Plays even if you are passenger on a mount.
 
-/radiomount - Open settings
+Radio can be toggled off/on at any time, mounted or on foot.
 
-/radiovolume - 1-100 change the volume on the go.
+Compatable & tested with Icecast Media Server/Mixxx & many public radio stations.
 
-/radiotoggle - toggle radio on/off anytime
+/radiosettings - Open the settings window
 
-links like ones from the below site work:
+/radiotoggle - Toggle radio on/off
+
+/radiovolume <1-100> - set the volume
+
+/radioautostart - toggle radio auto starting when you mount up
+
+/radioautostop - toggle radio auto stopping when you dismount 
+
+Links like ones from the below site work:
 
 https://media-ice.musicradio.com/
 
-Its also possible to use something like Icecast with Mixxx to setup your own custom radio and use it with this.
+Not all radio services will work please keep this in mind.
+
+Its possible to use Icecast with Mixxx to setup your own custom radio and use it with this, allowing you to DJ live to listeners!
 
 https://icecast.org/
 https://mixxx.org/
