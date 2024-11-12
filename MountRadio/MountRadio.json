@@ -1,8 +1,8 @@
 {
   "Author": "Jen Hyul",
   "Name": "Mount Radio/Mount Music Player",
-  "Punchline": "URL music player for your mounts! Stream internet radio when on a mount or on foot",
-  "Description": "/radiomount - open the settings window, /radiotoggle /radiovolume - change the volume on the go!",
+  "Punchline": "URL music player for your mounts! Stream internet radio when on a mount or on foot.",
+  "Description": "/radiosettings, /radiotoggle, /radiovolume, /radioautostart, /radioautostop",
   "ApplicableVersion": "any",
   "Tags": [
     "Radio",

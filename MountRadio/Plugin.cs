@@ -6,6 +6,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using MountRadio;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using RadioMountPlugin.Windows;
@@ -21,37 +22,39 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static ICondition Condition { get; private set; } = null!;
     [PluginService] internal static IChatGui Chat { get; private set; } = null!;
-    [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
 
-    public string Name => "Radio Mount Plugin";
-    private const string CommandName = "/radiomount";
-
-    public PluginConfiguration Configuration { get; init; }
+    public Configuration Configuration { get; init; }
     private WasapiOut radioPlayer;
     private MediaFoundationReader? streamReader = null;
 
     private readonly WindowSystem windowSystem = new("RadioMountPlugin");
     private ConfigWindow configWindow;
-    private MainWindow mainWindow;
-
+    
     public RadioMountPlugin()
     {
         // Load the configuration
-        Configuration = PluginInterface.GetPluginConfig() as PluginConfiguration ?? new PluginConfiguration();
+        Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         Configuration.Initialize(PluginInterface);
 
         // Initialize radioPlayer with the configured volume
         radioPlayer = new WasapiOut(AudioClientShareMode.Shared, 200);
         radioPlayer.Volume = Configuration.Volume; // Set initial volume from config
 
-        // Initialize windows
+        // Initialize the config window
         configWindow = new ConfigWindow(this);
-        mainWindow = new MainWindow(this, "path/to/goatImage.png", TextureProvider); // Update the path accordingly
-
         windowSystem.AddWindow(configWindow);
-        windowSystem.AddWindow(mainWindow);
 
-        CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
+        // Register the main UI callback
+        PluginInterface.UiBuilder.OpenMainUi += ToggleConfigUI;
+
+        // Register UI callbacks
+        PluginInterface.UiBuilder.Draw += DrawUI;
+        PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
+
+        // Register condition change handler for mount events
+        Condition.ConditionChange += OnConditionChange;
+
+        CommandManager.AddHandler("/radiosettings", new CommandInfo(OnCommand)
         {
             HelpMessage = "Open the Radio Mount Plugin configuration."
         });
@@ -76,13 +79,6 @@ public sealed class RadioMountPlugin : IDalamudPlugin
             HelpMessage = "Toggle whether the radio starts automatically when you mount."
         });
 
-        // Register UI callbacks
-        PluginInterface.UiBuilder.Draw += DrawUI;
-        PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
-        PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
-
-        // Register condition change handler for mount events
-        Condition.ConditionChange += OnConditionChange;
     }
 
     private void ToggleAutoStopCommand(string command, string args)
@@ -156,20 +152,23 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         }
     }
 
-    private void PlayRadio()
+    private async void PlayRadio()
     {
         try
         {
             // Dispose of any existing instances
             StopRadio();
 
-            // Reinitialize radioPlayer and streamReader
-            radioPlayer = new WasapiOut(AudioClientShareMode.Shared, 200);
-            radioPlayer.Volume = Configuration.Volume;
+            await Task.Run(() =>
+            {
+                // Reinitialize radioPlayer and streamReader asynchronously
+                radioPlayer = new WasapiOut(AudioClientShareMode.Shared, 200);
+                radioPlayer.Volume = Configuration.Volume;
 
-            streamReader = new MediaFoundationReader(Configuration.RadioUrl);
-            radioPlayer.Init(streamReader);
-            radioPlayer.Play();
+                streamReader = new MediaFoundationReader(Configuration.RadioUrl);
+                radioPlayer.Init(streamReader);
+                radioPlayer.Play();
+            });
         }
         catch (Exception ex) when ((uint)ex.HResult == 0xC00D0035)
         {
@@ -221,7 +220,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     public void Dispose()
     {
         windowSystem.RemoveAllWindows();
-        CommandManager.RemoveHandler(CommandName);
+        CommandManager.RemoveHandler("/radiosettings");
         CommandManager.RemoveHandler("/radiovolume");
         CommandManager.RemoveHandler("/radiotoggle");
         CommandManager.RemoveHandler("/radioautostop");
@@ -229,7 +228,6 @@ public sealed class RadioMountPlugin : IDalamudPlugin
         Condition.ConditionChange -= OnConditionChange;
         PluginInterface.UiBuilder.Draw -= DrawUI;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
-        PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUI;
 
         StopRadio();
         radioPlayer?.Dispose();
@@ -241,7 +239,7 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     private void DrawUI() => windowSystem.Draw();
 
     public void ToggleConfigUI() => configWindow.Toggle();
-    public void ToggleMainUI() => mainWindow.Toggle();
+    
     public void SetVolume(float volume)
     {
         if (radioPlayer != null)
@@ -257,25 +255,4 @@ public sealed class RadioMountPlugin : IDalamudPlugin
     }
 }
 
-// Configuration class to manage plugin settings
-public class PluginConfiguration : IPluginConfiguration
-{
-    public int Version { get; set; } = 1;
-    public string RadioUrl { get; set; } = "https://media-ssl.musicradio.com/CapitalUK";
-    public float Volume { get; set; } = 0.5f;
 
-    public bool SomePropertyToBeSavedAndWithADefault { get; set; } = false;
-    public bool IsConfigWindowMovable { get; set; } = true;
-    public bool AutoStopOnDismount { get; set; } = true; // New property, default to enabled
-    public bool AutoStartOnMount { get; set; } = true; // New property, default to enabled
-
-    [NonSerialized]
-    private IDalamudPluginInterface? pluginInterface;
-
-    public void Initialize(IDalamudPluginInterface pluginInterface)
-    {
-        this.pluginInterface = pluginInterface;
-    }
-
-    public void Save() => pluginInterface?.SavePluginConfig(this);
-}

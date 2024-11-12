@@ -1,3 +1,4 @@
+using Dalamud.Interface.Utility;
 using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
@@ -13,9 +14,8 @@ public class ConfigWindow : Window, IDisposable
     {
         this.plugin = plugin;
 
-        // Set a larger default size
-        this.Size = new Vector2(600, 400); // Adjust this as needed
-        this.SizeCondition = ImGuiCond.Once; // Allow resizing after the initial size is set
+        this.Size = ImGuiHelpers.ScaledVector2(600, 400);
+        this.SizeCondition = ImGuiCond.Once;
     }
 
     public override void Draw()
@@ -25,25 +25,15 @@ public class ConfigWindow : Window, IDisposable
         ImGui.InputText("##RadioUrl", ref radioUrl, 100);
         plugin.Configuration.RadioUrl = radioUrl;
 
-        if (ImGui.Button("Save"))
-        {
-            plugin.Configuration.Save();
-            ImGui.Text("Settings saved.");
-        }
-
         bool autoStopOnDismount = plugin.Configuration.AutoStopOnDismount;
-
         if (ImGui.Checkbox("Auto-stop music on dismount", ref autoStopOnDismount))
         {
-            // Update the configuration only if the value has changed
             plugin.Configuration.AutoStopOnDismount = autoStopOnDismount;
             plugin.Configuration.Save();
         }
-
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Toggle whether music stops automatically when you dismount.");
 
-        // Auto-start toggle
         bool autoStartOnMount = plugin.Configuration.AutoStartOnMount;
         if (ImGui.Checkbox("Auto-start music on mount", ref autoStartOnMount))
         {
@@ -52,6 +42,22 @@ public class ConfigWindow : Window, IDisposable
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Toggle whether music starts automatically when you mount.");
+
+        if (ImGui.Button("Save"))
+        {
+            plugin.Configuration.Save();
+            ImGui.Text("Settings saved.");
+        }
+
+        ImGui.Text("Radio Stream for mounts or on foot.");
+
+        ImGui.Text("Use a live radio for synced music with friends!");
+
+        ImGui.Text("Plays even if you are passenger on a mount.");
+
+        ImGui.Text("Compatable & tested with Icecast Media Server/Mixxx");
+
+        ImGui.Text("Not all radio services will work.");
     }
 
     public void Dispose() => GC.SuppressFinalize(this);
