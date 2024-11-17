@@ -13,4 +13,8 @@
   <ItemGroup>
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>
+	
+  <ItemGroup>
+    <PackageReference Update="DalamudPackager" Version="11.0.0" />
+  </ItemGroup>
 </Project>
